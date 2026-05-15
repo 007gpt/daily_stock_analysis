@@ -699,8 +699,44 @@ class TestMarketAnalyzerBypassFix:
         assert "### 3. Breadth & Liquidity" in result
         assert "Turnover (CNY 100m)" in result
         assert "### 4. Sector Highlights" in result
+        assert "### 5. Risk Alerts" in result
+        assert "### 6. Risk Alerts" not in result
         assert "### 6. Strategy Framework" in result
         assert "### 一、市场总结" not in result
+
+    def test_generate_template_review_uses_hot_stock_heading_and_keeps_english_numbering(self):
+        from src.market_analyzer import MarketIndex, MarketOverview
+
+        ma = self._make_market_analyzer_with_mock_generate_text(return_value=None)
+        ma.config.report_language = "en"
+        overview = MarketOverview(
+            date="2026-03-06",
+            indices=[
+                MarketIndex(
+                    code="000001",
+                    name="上证指数",
+                    current=3310.0,
+                    change=12.0,
+                    change_pct=0.36,
+                )
+            ],
+            up_count=3200,
+            down_count=1800,
+            limit_up_count=88,
+            limit_down_count=5,
+            total_amount=14567.0,
+            top_sectors=[{"name": "AI算力", "change_pct": 3.25}],
+            bottom_sectors=[{"name": "煤炭", "change_pct": -1.12}],
+            hot_stocks=[{"rank": 1, "name": "中国长城", "change_pct": 9.99}],
+            limit_up_stocks=[{"code": "603399", "name": "永杉锂业", "consecutive_boards": 2}],
+        )
+
+        result = ma.generate_market_review(overview, [])
+
+        assert "### 5. Hot Stocks & Limit-up Ladder" in result
+        assert "### 6. Risk Alerts" in result
+        assert "### 7. Strategy Framework" in result
+        assert "### 7. Strategy Framework" in result and result.index("### 6. Risk Alerts") < result.index("### 7. Strategy Framework")
 
     def test_generate_template_review_keeps_chinese_shell_for_us_when_report_language_is_default(self):
         from src.core.market_profile import US_PROFILE
@@ -731,6 +767,49 @@ class TestMarketAnalyzerBypassFix:
         assert "今日美股市场整体呈现**小幅下跌**态势" in result
         assert "### 1. Market Summary" not in result
         assert "US Market Recap" not in result
+        assert "### 四、热门股票与连板" not in result
+        assert "人气股" not in result
+        assert "涨停" not in result
+        assert "连板" not in result
+        assert "涨停池" not in result
+        assert "高位股分歧风险" not in result
+        assert "### 四、资金与情绪" in result
+
+    def test_generate_template_review_omits_a_share_hot_stock_sections_for_hk(self):
+        from src.core.market_profile import HK_PROFILE
+        from src.core.market_strategy import get_market_strategy_blueprint
+        from src.market_analyzer import MarketOverview, MarketIndex
+
+        ma = self._make_market_analyzer_with_mock_generate_text(return_value=None)
+        ma.region = "hk"
+        ma.profile = HK_PROFILE
+        ma.strategy = get_market_strategy_blueprint("hk")
+        overview = MarketOverview(
+            date="2026-03-05",
+            indices=[
+                MarketIndex(
+                    code="HSI",
+                    name="恒生指数",
+                    current=18600.0,
+                    change=120.0,
+                    change_pct=0.65,
+                )
+            ],
+            hot_stocks=[{"rank": 1, "code": "00700", "name": "腾讯控股"}],
+            limit_up_stocks=[{"code": "00700", "name": "腾讯控股"}],
+        )
+
+        result = ma.generate_market_review(overview, [])
+
+        assert "今日港股市场整体呈现**小幅上涨**态势" in result
+        assert "### 四、热门股票与连板" not in result
+        assert "人气股" not in result
+        assert "涨停" not in result
+        assert "连板" not in result
+        assert "涨停池" not in result
+        assert "高位股分歧风险" not in result
+        assert "### 四、资金与情绪" in result
+        assert "### 五、消息催化" in result
 
     def test_inject_data_into_review_matches_english_headings(self):
         from src.market_analyzer import MarketOverview, MarketIndex
@@ -775,9 +854,9 @@ Sector text.
         assert "Advancers **3200**" in result
         assert "Turnover **14567** (CNY 100m)" in result
         assert "| Index | Last | Change % | Open | High | Low | Amplitude | Turnover (CNY 100m) |" in result
-        assert "#### Leading Sectors" in result
+        assert "#### Leading Industries" in result
         assert "| 1 | AI算力 | +3.25% |" in result
-        assert "#### Lagging Sectors" in result
+        assert "#### Lagging Industries" in result
         assert "| 1 | 煤炭 | -1.12% |" in result
 
     def test_inject_data_into_review_matches_reference_style_chinese_headings(self):
@@ -827,15 +906,16 @@ Sector text.
 
         result = ma._inject_data_into_review(review, overview, news)
 
-        assert "大盘红绿灯" in result
-        assert "green（可进攻）" in result
-        assert "核心原因" in result
-        assert "操作建议" in result
-        assert "盘面温度" in result
+        assert "盘面评分" in result
+        assert "（偏暖，可进攻）" in result
+        assert "评分依据" in result
+        assert "操作节奏" in result
+        assert "大盘红绿灯" not in result
+        assert "████" not in result
         assert "| 上涨/下跌/平盘 | 3200 / 1800 / 100 |" in result
         assert "| 指数 | 最新 | 涨跌幅 | 开盘 | 最高 | 最低 | 振幅 | 成交额(亿) |" in result
         assert "| 上证指数 | 3300.00 | 🟢 +0.36% | 3288.00 | 3312.00 | 3276.00 | 1.10% | 1450 |" in result
-        assert "#### 领涨板块 Top 5" in result
+        assert "#### 行业涨跌 Top 5" in result
         assert "| 1 | AI算力 | +3.25% |" in result
         assert "#### 近三日催化线索" in result
         assert "AI算力板块走强" in result
@@ -905,6 +985,96 @@ Sector text.
         assert long_url not in prompt
         assert "URL: https://example.com/redirect?" in prompt
         assert ("x" * 220) not in prompt
+
+    def test_us_english_review_prompt_omits_a_share_hot_stock_template(self):
+        from src.core.market_profile import US_PROFILE
+        from src.core.market_strategy import get_market_strategy_blueprint
+        from src.market_analyzer import MarketOverview
+
+        ma = self._make_market_analyzer_with_mock_generate_text(return_value="review")
+        ma.config.report_language = "en"
+        ma.region = "us"
+        ma.profile = US_PROFILE
+        ma.strategy = get_market_strategy_blueprint("us")
+
+        prompt = ma._build_review_prompt(
+            MarketOverview(
+                date="2026-05-06",
+                hot_stocks=[{"rank": 1, "code": "AAPL", "name": "Apple"}],
+                limit_up_stocks=[{"code": "AAPL", "name": "Apple"}],
+            ),
+            [],
+        )
+
+        assert "## Hot Stocks and Limit-up Ladder" not in prompt
+        assert "### 5. Hot Stocks & Limit-up Ladder" not in prompt
+        assert "Limit-up" not in prompt
+        assert "### 5. Outlook" in prompt
+
+    def test_hk_chinese_review_prompt_omits_a_share_ladder_template(self):
+        from src.core.market_profile import HK_PROFILE
+        from src.core.market_strategy import get_market_strategy_blueprint
+        from src.market_analyzer import MarketOverview
+
+        ma = self._make_market_analyzer_with_mock_generate_text(return_value="review")
+        ma.region = "hk"
+        ma.profile = HK_PROFILE
+        ma.strategy = get_market_strategy_blueprint("hk")
+
+        prompt = ma._build_review_prompt(
+            MarketOverview(
+                date="2026-05-06",
+                hot_stocks=[{"rank": 1, "code": "00700", "name": "腾讯控股"}],
+                limit_up_stocks=[{"code": "00700", "name": "腾讯控股"}],
+            ),
+            [],
+        )
+
+        assert "## 热门个股与涨停梯队" not in prompt
+        assert "### 四、热门股票与连板" not in prompt
+        assert "涨停" not in prompt
+        assert "### 四、资金与情绪" in prompt
+
+    def test_inject_data_adds_hot_stocks_and_limit_up_ladder(self):
+        from src.market_analyzer import MarketOverview
+
+        ma = self._make_market_analyzer_with_mock_generate_text(return_value="review")
+        overview = MarketOverview(
+            date="2026-05-06",
+            hot_stocks=[
+                {
+                    "rank": 1,
+                    "code": "SZ000066",
+                    "name": "中国长城",
+                    "change_pct": 9.99,
+                    "price": 21.8,
+                    "source": "东方财富人气榜",
+                },
+            ],
+            limit_up_stocks=[
+                {
+                    "code": "603399",
+                    "name": "永杉锂业",
+                    "consecutive_boards": 4,
+                    "industry": "能源金属",
+                    "first_limit_time": "092501",
+                    "amount": 162913421,
+                }
+            ],
+        )
+        review = """## 2026-05-06 大盘复盘
+
+### 四、热门股票与连板
+情绪。
+"""
+
+        result = ma._inject_data_into_review(review, overview)
+
+        assert "#### 人气股票 Top 8" in result
+        assert "| 1 | SZ000066 | 中国长城 | +9.99% | 21.80 | 东方财富人气榜 |" in result
+        assert "#### 涨停连板梯队" in result
+        assert "4板 1只" in result
+        assert "| 603399 | 永杉锂业 | 4 | 能源金属 | 09:25 | 1.63 |" in result
 
     def test_market_light_snapshot_marks_defensive_market_red(self):
         from src.market_analyzer import MarketIndex, MarketOverview
