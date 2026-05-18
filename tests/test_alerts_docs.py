@@ -177,3 +177,18 @@ def test_alerts_doc_defines_p4_notification_and_cooldown_scope() -> None:
         "最小回滚方式是 revert P4 PR",
     ):
         assert token in doc
+
+
+def test_alerts_doc_documents_rsi_wilder_smoothing() -> None:
+    doc = _read_doc()
+
+    for token in (
+        "## 技术指标口径",
+        "RSI",
+        "Wilder's EMA/SMMA",
+        "alpha=1/period",
+        "adjust=False",
+        "RSI_6 / RSI_12 / RSI_24",
+        "rsi_threshold",
+    ):
+        assert token in doc

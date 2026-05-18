@@ -25,6 +25,7 @@ import pandas as pd
 import numpy as np
 
 from src.config import get_config
+from src.services.alert_indicators import add_rsi_columns
 
 logger = logging.getLogger(__name__)
 
@@ -306,35 +307,13 @@ class StockTrendAnalyzer:
         计算 RSI 指标
 
         公式：
+        - 平均上涨/下跌幅度使用 Wilder's EMA/SMMA
+        - avg_gain = gain.ewm(alpha=1/period, adjust=False).mean()
+        - avg_loss = loss.ewm(alpha=1/period, adjust=False).mean()
         - RS = 平均上涨幅度 / 平均下跌幅度
         - RSI = 100 - (100 / (1 + RS))
         """
-        df = df.copy()
-
-        for period in [self.RSI_SHORT, self.RSI_MID, self.RSI_LONG]:
-            # 计算价格变化
-            delta = df['close'].diff()
-
-            # 分离上涨和下跌
-            gain = delta.where(delta > 0, 0)
-            loss = -delta.where(delta < 0, 0)
-
-            # 计算平均涨跌幅
-            avg_gain = gain.rolling(window=period).mean()
-            avg_loss = loss.rolling(window=period).mean()
-
-            # 计算 RS 和 RSI
-            rs = avg_gain / avg_loss
-            rsi = 100 - (100 / (1 + rs))
-
-            # 填充 NaN 值
-            rsi = rsi.fillna(50)  # 默认中性值
-
-            # 添加到 DataFrame
-            col_name = f'RSI_{period}'
-            df[col_name] = rsi
-
-        return df
+        return add_rsi_columns(df, [self.RSI_SHORT, self.RSI_MID, self.RSI_LONG])
     
     def _analyze_trend(self, df: pd.DataFrame, result: TrendAnalysisResult) -> None:
         """

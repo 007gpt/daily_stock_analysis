@@ -15,9 +15,11 @@ import pandas as pd
 
 from src.config import Config
 from src.notification import ChannelAttemptResult, NotificationDispatchResult
+from src.services.alert_indicators import calculate_wilder_rsi
 from src.services.alert_service import AlertService
 from src.services.alert_worker import AlertWorker
 from src.storage import DatabaseManager
+from src.stock_analyzer import StockTrendAnalyzer
 
 
 class AlertWorkerTestCase(unittest.TestCase):
@@ -743,6 +745,41 @@ class AlertWorkerTestCase(unittest.TestCase):
         self.assertEqual(fourth["notified"], 0)
         self.assertEqual(notifier.send_with_results.call_count, 3)
         self.assertEqual(len(self._triggers(status="triggered")), 4)
+
+    def test_rsi_uses_wilder_ema_and_matches_report_columns(self) -> None:
+        closes = pd.Series(
+            [
+                10.0, 11.0, 10.5, 12.0, 11.0,
+                13.0, 12.5, 14.0, 13.5, 15.0,
+                14.0, 16.0, 15.5, 17.0, 16.0,
+                18.0, 17.5, 19.0, 18.0, 20.0,
+            ]
+        )
+        period = 12
+        delta = closes.diff()
+        gain = delta.where(delta > 0, 0.0)
+        loss = -delta.where(delta < 0, 0.0)
+        avg_gain = gain.ewm(alpha=1 / period, adjust=False).mean()
+        avg_loss = loss.ewm(alpha=1 / period, adjust=False).mean()
+        expected = 100 - (
+            100 / (1 + avg_gain / avg_loss)
+        )
+        expected = expected.fillna(50)
+
+        actual = calculate_wilder_rsi(closes, period)
+
+        pd.testing.assert_series_equal(actual, expected)
+        self.assertAlmostEqual(actual.iloc[-1], 72.23735318958683)
+
+        sma_avg_gain = gain.rolling(window=period).mean()
+        sma_avg_loss = loss.rolling(window=period).mean()
+        sma_rsi = (100 - (100 / (1 + sma_avg_gain / sma_avg_loss))).fillna(50)
+        self.assertGreater(abs(actual.iloc[-1] - sma_rsi.iloc[-1]), 1.0)
+
+        report_df = StockTrendAnalyzer()._calculate_rsi(pd.DataFrame({"close": closes}))
+        self.assertAlmostEqual(report_df["RSI_12"].iloc[-1], actual.iloc[-1])
+        self.assertIn("RSI_6", report_df)
+        self.assertIn("RSI_24", report_df)
 
 
 if __name__ == "__main__":

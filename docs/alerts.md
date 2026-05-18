@@ -21,6 +21,21 @@
 
 `sentiment_shift`、`risk_flag`、`custom` 等类型只作为未来扩展占位；当前运行时不接受这些类型作为可执行规则。
 
+## 技术指标口径
+
+RSI 使用 Wilder's EMA/SMMA 平滑口径，与 TradingView 和常见券商软件对齐，不使用简单移动平均窗口口径。
+
+公式约定：
+
+- `delta = close.diff()`
+- `gain = delta.where(delta > 0, 0.0)`
+- `loss = -delta.where(delta < 0, 0.0)`
+- `avg_gain = gain.ewm(alpha=1/period, adjust=False).mean()`
+- `avg_loss = loss.ewm(alpha=1/period, adjust=False).mean()`
+- `RSI = 100 - (100 / (1 + avg_gain / avg_loss))`
+
+该口径适用于分析报告中的 `RSI_6 / RSI_12 / RSI_24`，也作为后续 P5 `rsi_threshold` 告警规则的计算基线；当前运行时尚未开放 `rsi_threshold` 作为可执行规则。
+
 ## Legacy 配置兼容
 
 `AGENT_EVENT_ALERT_RULES_JSON` 作为 legacy 运行时规则来源继续保留，不自动迁移、删除、覆盖或改写用户已有 `.env` / Web 配置。
