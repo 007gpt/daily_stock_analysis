@@ -205,6 +205,7 @@ const MARKET_REVIEW_TEXT: Record<ReportLanguage, {
   riskAndWatch: string;
   noRiskWatch: string;
   structuredMarketData: string;
+  noBreadthData: string;
   advancers: string;
   decliners: string;
   limitUpDown: string;
@@ -223,6 +224,7 @@ const MARKET_REVIEW_TEXT: Record<ReportLanguage, {
     riskAndWatch: '风险与观察',
     noRiskWatch: '暂无观察重点',
     structuredMarketData: '结构化大盘数据',
+    noBreadthData: '暂无数据',
     advancers: '上涨家数',
     decliners: '下跌家数',
     limitUpDown: '涨停/跌停',
@@ -241,6 +243,7 @@ const MARKET_REVIEW_TEXT: Record<ReportLanguage, {
     riskAndWatch: 'Risks & Watchlist',
     noRiskWatch: 'No key observations yet',
     structuredMarketData: 'Structured Market Data',
+    noBreadthData: 'No data',
     advancers: 'Advancers',
     decliners: 'Decliners',
     limitUpDown: 'Limit Up/Down',
@@ -478,7 +481,9 @@ export const MarketReviewReportView: React.FC<MarketReviewReportViewProps> = ({
                       </p>
                     </div>
                   </div>
-                ) : null}
+                ) : (
+                  <p className="text-sm text-secondary-text">{marketReviewText.noBreadthData}</p>
+                )}
                 {marketData.indices.length > 0 ? (
                   <div className="overflow-x-auto">
                     <table className="min-w-full text-sm">

@@ -501,7 +501,26 @@ Focus on index trend, liquidity, and sector rotation to shape the next-session t
         sections = self._split_report_sections(report)
         title = self._extract_report_title(report) or self._get_review_title(overview.date).lstrip("# ").strip()
         light = market_light_snapshot or self.build_market_light_snapshot(overview)
-        return {
+        breadth_dimensions = None
+        if isinstance(light, dict):
+            dimensions = light.get("dimensions")
+            if isinstance(dimensions, dict):
+                breadth_dimensions = dimensions.get("breadth")
+
+        breadth_supported = bool(self.profile.has_market_stats)
+        if breadth_supported and isinstance(breadth_dimensions, dict) and "available" in breadth_dimensions:
+            breadth_supported = bool(breadth_dimensions.get("available"))
+
+        has_breadth_data = False
+        if breadth_supported:
+            if isinstance(breadth_dimensions, dict) and "available" in breadth_dimensions:
+                has_breadth_data = bool(breadth_dimensions.get("available"))
+            else:
+                breadth_available = overview.up_count + overview.down_count + overview.flat_count > 0
+                limit_available = overview.limit_up_count + overview.limit_down_count > 0
+                has_breadth_data = bool(breadth_available or limit_available)
+
+        payload = {
             "version": 1,
             "kind": "market_review",
             "region": self.region,
@@ -511,15 +530,6 @@ Focus on index trend, liquidity, and sector rotation to shape the next-session t
             "date": overview.date,
             "market_scope": self._get_market_scope_name(language),
             "market_light": light,
-            "breadth": {
-                "up_count": overview.up_count,
-                "down_count": overview.down_count,
-                "flat_count": overview.flat_count,
-                "limit_up_count": overview.limit_up_count,
-                "limit_down_count": overview.limit_down_count,
-                "total_amount": overview.total_amount,
-                "turnover_unit": self._get_turnover_unit_label(),
-            },
             "indices": [idx.to_dict() for idx in overview.indices],
             "sectors": {
                 "top": list(overview.top_sectors or []),
@@ -529,6 +539,19 @@ Focus on index trend, liquidity, and sector rotation to shape the next-session t
             "sections": sections,
             "markdown_report": report,
         }
+
+        if has_breadth_data:
+            payload["breadth"] = {
+                "up_count": overview.up_count,
+                "down_count": overview.down_count,
+                "flat_count": overview.flat_count,
+                "limit_up_count": overview.limit_up_count,
+                "limit_down_count": overview.limit_down_count,
+                "total_amount": overview.total_amount,
+                "turnover_unit": self._get_turnover_unit_label(),
+            }
+
+        return payload
 
     @staticmethod
     def _extract_report_title(report: str) -> str:

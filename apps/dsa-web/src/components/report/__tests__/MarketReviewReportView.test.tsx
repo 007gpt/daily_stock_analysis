@@ -74,6 +74,29 @@ const combinedMarketReviewPayload: MarketReviewPayload = {
   },
 };
 
+const noBreadthMarketReviewPayload: MarketReviewPayload = {
+  version: 1,
+  kind: 'market_review',
+  region: 'us',
+  language: 'en',
+  title: 'Market Review',
+  rootTitle: 'Market Review',
+  indices: [{
+    code: 'SPX',
+    name: 'S&P 500',
+    current: 5200,
+    changePct: 0.68,
+    high: 5235.2,
+    low: 5170.4,
+  }],
+  sectors: {
+    top: [{ name: 'Technology', changePct: 1.9 }],
+    bottom: [{ name: 'Energy', changePct: -0.8 }],
+  },
+  news: [],
+  sections: [],
+};
+
 describe('MarketReviewReportView', () => {
   it('uses localized summary card labels and fallbacks for English reports', () => {
     render(
@@ -134,5 +157,21 @@ describe('MarketReviewReportView', () => {
     expect(screen.queryByText('Structured Market Data')).not.toBeInTheDocument();
     expect(screen.queryByText('Advancers')).not.toBeInTheDocument();
     expect(screen.queryByText('Index')).not.toBeInTheDocument();
+  });
+
+  it('shows "No data" when breadth is not available for a market review payload', () => {
+    render(
+      <MarketReviewReportView
+        payload={noBreadthMarketReviewPayload}
+        content="# Market Review"
+        reportLanguage="en"
+      />,
+    );
+
+    expect(screen.getByText('Structured Market Data')).toBeInTheDocument();
+    expect(screen.getByText('No data')).toBeInTheDocument();
+    expect(screen.getByText('S&P 500')).toBeInTheDocument();
+    expect(screen.queryByText('Advancers')).not.toBeInTheDocument();
+    expect(screen.queryByText('Decliners')).not.toBeInTheDocument();
   });
 });
