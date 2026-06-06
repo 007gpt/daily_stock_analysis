@@ -112,6 +112,7 @@ class StockAnalysisPipeline:
         analysis_skills: Optional[List[str]] = None,
         analysis_phase: str = "auto",
         portfolio_context: Optional[Dict[str, Any]] = None,
+        daily_market_context_enabled: bool = True,
         daily_market_context_allow_generate: bool = True,
     ):
         """
@@ -134,6 +135,7 @@ class StockAnalysisPipeline:
         self.analysis_skills = list(analysis_skills) if analysis_skills is not None else None
         self.analysis_phase = analysis_phase or "auto"
         self.portfolio_context = dict(portfolio_context) if isinstance(portfolio_context, dict) else None
+        self.daily_market_context_enabled = daily_market_context_enabled
         self.daily_market_context_allow_generate = daily_market_context_allow_generate
         
         # 初始化各模块
@@ -1312,6 +1314,8 @@ class StockAnalysisPipeline:
         target_date: Optional[date] = None,
     ) -> Optional[DailyMarketContext]:
         """Load/generate today's market context when market review is explicitly enabled."""
+        if getattr(self, "daily_market_context_enabled", True) is not True:
+            return None
         if getattr(self.config, "market_review_enabled", None) is not True:
             return None
 

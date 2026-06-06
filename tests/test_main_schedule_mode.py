@@ -551,6 +551,7 @@ class MainScheduleModeTestCase(unittest.TestCase):
             main.run_full_analysis(config, args, [])
 
         self.assertEqual(pipeline_kwargs["daily_market_context_allow_generate"], False)
+        self.assertEqual(pipeline_kwargs["daily_market_context_enabled"], False)
         prime_context.assert_not_called()
         run_market_review.assert_not_called()
         refresh.assert_called_once_with(config)

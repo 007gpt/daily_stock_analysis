@@ -666,6 +666,7 @@ def run_full_analysis(
             query_id=query_id,
             query_source="cli",
             save_context_snapshot=save_context_snapshot,
+            daily_market_context_enabled=not getattr(args, 'no_market_review', False),
             daily_market_context_allow_generate=False,
         )
         if should_generate_market_context:
