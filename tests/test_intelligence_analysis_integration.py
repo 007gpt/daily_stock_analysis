@@ -10,7 +10,7 @@ from datetime import datetime
 
 from src.config import Config, get_config
 from src.core.pipeline import StockAnalysisPipeline
-from src.market_analyzer import MarketAnalyzer
+from src.market_analyzer import MarketAnalyzer, MarketIndex, MarketOverview
 from src.repositories.intelligence_repo import IntelligenceRepository
 from src.storage import DatabaseManager
 
@@ -80,6 +80,42 @@ class PersistedIntelligenceAnalysisIntegrationTestCase(unittest.TestCase):
         item = next(item for item in merged if item.get("title") == "Policy support lifts market sentiment")
         self.assertEqual(item["snippet"], "Market-level catalyst.")
         self.assertEqual(item["url"], "https://news.example.com/market")
+
+    def test_market_review_local_intelligence_kept_in_top_payload_when_search_news_filled(self) -> None:
+        analyzer = MarketAnalyzer(config=self.config, region="cn")
+        search_news = [
+            {
+                "title": f"Search headline {i}",
+                "snippet": f"Search summary {i}",
+                "source": "search-source",
+                "published_date": "2026-06-17",
+                "url": f"https://news.example.com/search/{i}",
+            }
+            for i in range(8)
+        ]
+
+        merged = analyzer._merge_persisted_market_intelligence(search_news)
+        self.assertEqual(merged[0]["title"], "Policy support lifts market sentiment")
+
+        payload = analyzer.build_market_review_payload(
+            MarketOverview(
+                date="2026-06-17",
+                indices=[
+                    MarketIndex(
+                        code="000001",
+                        name="SSE Composite",
+                        current=3200.0,
+                        change=10.0,
+                        change_pct=0.25,
+                    )
+                ],
+            ),
+            news=merged,
+            report="复盘正文",
+            market_light_snapshot={"dimensions": {"breadth": {"available": True}}},
+        )
+        self.assertEqual(payload["news"][0]["url"], "https://news.example.com/market")
+        self.assertGreaterEqual(len(payload["news"]), 1)
 
 
 if __name__ == "__main__":

@@ -1477,11 +1477,12 @@ Market conditions can change quickly. The data above is for reference only and d
         )
 
     def _merge_persisted_market_intelligence(self, news: List) -> List:
-        """Append locally persisted market intelligence to market-review news, fail-open."""
-        merged = list(news or [])
+        """Merge local persisted market intelligence before search news to avoid truncation-loss, fail-open."""
+        search_news = list(news or [])
+        merged_local = []
         seen_urls = {
             self._get_news_field(item, "url")
-            for item in merged
+            for item in search_news
             if self._get_news_field(item, "url")
         }
         try:
@@ -1500,7 +1501,7 @@ Market conditions can change quickly. The data above is for reference only and d
                 if url and url in seen_urls:
                     continue
                 seen_urls.add(url)
-                merged.append({
+                merged_local.append({
                     "title": item.get("title") or "未命名资讯",
                     "snippet": item.get("summary") or "",
                     "source": item.get("source") or item.get("source_name") or "local-intel",
@@ -1509,7 +1510,9 @@ Market conditions can change quickly. The data above is for reference only and d
                 })
         except Exception as exc:
             logger.debug("[大盘] %s action=load_local_intelligence status=failed error=%s", self._log_context(), exc)
-        return merged
+        # Keep local market intelligence at the front so market-review prompt/payload slicing
+        # still includes local links when search news already reaches the top-N limit.
+        return merged_local + search_news
 
     def run_daily_review(self) -> str:
         """
