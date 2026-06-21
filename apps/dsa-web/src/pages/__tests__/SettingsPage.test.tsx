@@ -1154,6 +1154,87 @@ describe('SettingsPage', () => {
     await waitFor(() => expect(runSchedulerNow).toHaveBeenCalledTimes(1));
   });
 
+  it('refreshes scheduler status after saving scheduler settings', async () => {
+    const configState = buildSystemConfigState();
+    getSchedulerStatus
+      .mockResolvedValueOnce({
+        enabled: false,
+        running: false,
+        scheduleTimes: [],
+        nextRunAt: null,
+        lastRunAt: null,
+        lastSuccessAt: null,
+        lastError: null,
+      })
+      .mockResolvedValueOnce({
+        enabled: true,
+        running: false,
+        scheduleTimes: ['09:20', '15:10'],
+        nextRunAt: '2026-06-21T09:20:00+08:00',
+        lastRunAt: null,
+        lastSuccessAt: null,
+        lastError: null,
+      });
+    save.mockResolvedValue({ success: true });
+    useSystemConfigMock.mockReturnValue(buildSystemConfigState({
+      activeCategory: 'system',
+      hasDirty: true,
+      dirtyCount: 1,
+      getChangedItems: () => [{ key: 'SCHEDULE_ENABLED', value: 'true' }],
+      itemsByCategory: {
+        ...configState.itemsByCategory,
+        system: [
+          ...configState.itemsByCategory.system,
+          {
+            key: 'SCHEDULE_ENABLED',
+            value: 'false',
+            rawValueExists: true,
+            isMasked: false,
+            schema: {
+              key: 'SCHEDULE_ENABLED',
+              category: 'system',
+              dataType: 'boolean',
+              uiControl: 'switch',
+              isSensitive: false,
+              isRequired: false,
+              isEditable: true,
+              options: [],
+              validation: {},
+              displayOrder: 8,
+            },
+          },
+          {
+            key: 'SCHEDULE_TIMES',
+            value: '09:20,15:10',
+            rawValueExists: true,
+            isMasked: false,
+            schema: {
+              key: 'SCHEDULE_TIMES',
+              category: 'system',
+              dataType: 'string',
+              uiControl: 'text',
+              isSensitive: false,
+              isRequired: false,
+              isEditable: true,
+              options: [],
+              validation: {},
+              displayOrder: 11,
+            },
+          },
+        ],
+      },
+    }));
+
+    render(<SettingsPage />);
+
+    expect(await screen.findByText('未启用')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '保存配置 (1)' }));
+
+    await waitFor(() => expect(getSchedulerStatus).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText('已启用')).toBeInTheDocument();
+  });
+
   it('refreshes AlphaSift state when the enable flow fails', async () => {
     const configState = buildSystemConfigState();
     alphasiftEnable.mockRejectedValueOnce(new Error('config update failed'));

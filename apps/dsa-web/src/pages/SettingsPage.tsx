@@ -268,6 +268,7 @@ type SchedulerSettingsCardProps = {
   items: SystemConfigItem[];
   disabled: boolean;
   issueByKey: Record<string, ConfigValidationIssue[]>;
+  statusRefreshToken: number;
   onChange: (key: string, value: string) => void;
   t: (key: UiTextKey, params?: Record<string, string | number>) => string;
   language: UiLanguage;
@@ -277,6 +278,7 @@ const SchedulerSettingsCard: React.FC<SchedulerSettingsCardProps> = ({
   items,
   disabled,
   issueByKey,
+  statusRefreshToken,
   onChange,
   t,
   language,
@@ -310,7 +312,7 @@ const SchedulerSettingsCard: React.FC<SchedulerSettingsCardProps> = ({
       return;
     }
     void refreshSchedulerStatus();
-  }, [hasSchedulerSettings, refreshSchedulerStatus]);
+  }, [hasSchedulerSettings, refreshSchedulerStatus, statusRefreshToken]);
 
   if (!hasSchedulerSettings) {
     return null;
@@ -530,6 +532,7 @@ const SettingsPage: React.FC = () => {
   const [showImportConfirm, setShowImportConfirm] = useState(false);
   const [desktopUpdateState, setDesktopUpdateState] = useState<DesktopUpdateState | null>(null);
   const [isCheckingDesktopUpdate, setIsCheckingDesktopUpdate] = useState(false);
+  const [schedulerStatusRefreshToken, setSchedulerStatusRefreshToken] = useState(0);
   const envBackupImportRef = useRef<HTMLInputElement | null>(null);
   const desktopRuntimeApi = getDesktopRuntimeApi();
   const isDesktopRuntime = Boolean(desktopRuntimeApi);
@@ -826,11 +829,15 @@ const SettingsPage: React.FC = () => {
   const handleSaveConfig = async () => {
     const changedItems = getChangedItems();
     const changedAlphaSiftItem = changedItems.find((item) => item.key === 'ALPHASIFT_ENABLED');
+    const changedSchedulerSettings = changedItems.some((item) => SCHEDULER_SETTING_KEYS.has(item.key));
     const result = await save();
     if (!result.success) {
       return;
     }
     notifySystemConfigChanged();
+    if (changedSchedulerSettings) {
+      setSchedulerStatusRefreshToken((current) => current + 1);
+    }
     if (!changedAlphaSiftItem) {
       return;
     }
@@ -1045,6 +1052,7 @@ const SettingsPage: React.FC = () => {
                 items={rawActiveItems}
                 disabled={isSaving || isLoading}
                 issueByKey={issueByKey}
+                statusRefreshToken={schedulerStatusRefreshToken}
                 onChange={setDraftValue}
                 t={t}
                 language={uiLanguage}
