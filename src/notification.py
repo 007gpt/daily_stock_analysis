@@ -2141,13 +2141,33 @@ class NotificationService(
         add_signals(concept_signals, blocks.get("concept_top"), labels["leading_board_label"])
         add_signals(concept_signals, blocks.get("concept_bottom"), labels["lagging_board_label"])
 
-        def resolve_signal(name: str, board_type: str) -> Tuple[Optional[str], Optional[float]]:
+        def resolve_board_type(name: str, board_type: str) -> str:
             normalized_type = board_type.strip().lower()
-            is_industry = normalized_type in {"行业", "industry", "sector"}
-            is_concept = normalized_type in {"概念", "concept", "theme"}
-            if is_industry:
+            sector_signal = sector_signals.get(name)
+            concept_signal = concept_signals.get(name)
+            if concept_signal and not sector_signal:
+                return "concept"
+            if sector_signal and not concept_signal:
+                return "sector"
+
+            normalized_name = name.strip().lower()
+            if any(marker in normalized_name for marker in ("概念", "题材", "concept", "theme")):
+                return "concept"
+            if any(marker in normalized_name for marker in ("行业", "industry", "sector")):
+                return "sector"
+
+            if normalized_type in {"概念", "概念板块", "题材", "concept", "theme"}:
+                return "concept"
+            if normalized_type in {"行业", "行业板块", "industry", "sector"}:
+                return "sector"
+            # A-share belong_boards may omit type for concept/theme labels.
+            # Keep a deterministic display type instead of leaking N/A.
+            return "concept"
+
+        def resolve_signal(name: str, board_group: str) -> Tuple[Optional[str], Optional[float]]:
+            if board_group == "sector":
                 return sector_signals.get(name, (None, None))
-            if is_concept:
+            if board_group == "concept":
                 return concept_signals.get(name, (None, None))
             sector_signal = sector_signals.get(name)
             concept_signal = concept_signals.get(name)
@@ -2157,9 +2177,13 @@ class NotificationService(
                 return concept_signal
             return None, None
 
-        # Pre-resolve rows so we know whether board-signal columns carry any
-        # data — drop them entirely when every cell would be "--" (typical for
-        # HK/US where there's no 板块涨跌榜 feed) so the table stays compact.
+        def board_type_label(board_group: str) -> str:
+            if board_group == "sector":
+                return labels["industry_boards_heading"]
+            return labels["concept_boards_heading"]
+
+        # Pre-resolve rows so signal-bearing reports can show type/status columns,
+        # while plain related-board lists keep the original compact line.
         prepared: List[Tuple[str, str, Optional[str], Optional[float]]] = []
         for raw in belong_boards[:5]:
             if not isinstance(raw, dict):
@@ -2168,35 +2192,28 @@ class NotificationService(
             if not name:
                 continue
             board_type = self._format_text(raw.get("type"))
-            status_text, change_pct = resolve_signal(name, board_type)
-            prepared.append((name, board_type, status_text, change_pct))
+            board_group = resolve_board_type(name, board_type)
+            status_text, change_pct = resolve_signal(name, board_group)
+            prepared.append((name, board_type_label(board_group), status_text, change_pct))
 
         if not prepared:
             return
 
-        has_sector_signal = any(status is not None for _, _, status, _ in prepared)
-
         lines.append(f"### 🧩 {labels['related_boards_heading']}")
         lines.append("")
-        if has_sector_signal:
+        has_signal = any(status is not None for _, _, status, _ in prepared)
+        if has_signal:
             lines.append(
                 f"| {labels['board_name_label']} | {labels['board_type_label']} | "
                 f"{labels['board_status_label']} | {labels['board_change_pct_label']} |"
             )
-            lines.append("|:-----|:----:|:------:|------:|")
+            lines.append("|:-----|:-----:|:------:|------:|")
             for name, board_type, status_text, change_pct in prepared:
                 status = status_text if status_text is not None else "--"
                 change = "--" if change_pct is None else f"{change_pct:+.2f}%"
                 lines.append(f"| {name} | {board_type} | {status} | {change} |")
         else:
-            if all(board_type == "N/A" for _, board_type, _, _ in prepared):
-                lines.append(" / ".join(name for name, _, _, _ in prepared))
-                lines.append("")
-                return
-            lines.append(f"| {labels['board_name_label']} | {labels['board_type_label']} |")
-            lines.append("|:-----|:----:|")
-            for name, board_type, _, _ in prepared:
-                lines.append(f"| {name} | {board_type} |")
+            lines.append(" / ".join(name for name, _, _, _ in prepared))
         lines.append("")
 
     def _should_use_image_for_channel(

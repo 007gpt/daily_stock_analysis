@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- [修复] Web 报告概览恢复关联板块单行展示并修复横向滚动，通知报告在无板块涨跌信号时恢复原单行样式。
+- [修复] API 异步批量分析共享概念板块排行缓存，避免同批多股重复拉取全市场概念排行。
+- [文档] 补齐概念板块排行字段契约与通知报告行业/概念类型列展示说明。
 - [修复] 修复通知 Markdown 表格转换在空单元格后将后续内容错配到错误表头的问题。
 - [修复] 将 Docker 可安装的 Longbridge SDK 版本固定为 0.2.75，避免 `longbridge>=0.2.77` 从包索引消失后导致 docker-build 失败。
 
