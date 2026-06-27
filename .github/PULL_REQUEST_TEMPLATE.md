@@ -24,6 +24,8 @@ For English contributors: please fill in English. All fields marked (EN) accept 
 
 > 注意：请按实际 `git diff` 全量列出文件范围（建议注明文件总数），避免遗漏文档/后端/API/前端文件导致描述不一致。
 
+> 若本 PR 修改了 `.github/PULL_REQUEST_TEMPLATE.md`、`.github/copilot-instructions.md`、`AGENTS.md`、`.github/instructions/*` 或 `.claude/skills/**` 等协作与治理文件，请补充“变更原因 + 影响面 + 回滚方式（默认 revert）”到 Summary / Compatibility / Rollback，避免 Scope 与描述不一致。
+
 > 建议先执行并粘贴以下命令输出，避免与实际 diff 不一致：
 
 ```bash
@@ -56,6 +58,7 @@ python -m pytest -m "not network"
 
 > `Full-suite note` 必须与当次 PR 的当前 Head CI 结果保持一致；若本地复现存在环境相关失败，请明确标注“本地环境差异”并给出 GitHub CI 的结论与链接。  
 > 请避免保留与本 PR 无关的历史失败措辞，按本次实际结果填报。
+> 若 `Full-suite note` 与当前 Head CI 不一致，PR 文本不完整，请先更新 PR 描述后再提交。
 
 - 请在下面按实际结果填写并与 `Full-suite note` 保持一致（任一未填视为信息缺失）：
   - ai-governance：`pass` / `fail`，附链接
@@ -76,7 +79,7 @@ python -m pytest -m "not network"
 
 ## Visual Evidence (if applicable)
 
-若本 PR 修改报告格式、报告渲染效果或 Web UI 界面，请在此处附受影响报告 / 页面截图；涉及前后差异时，优先附前后对比。Issue / PR 过程截图、审查截图、一次性验收截图和临时可视证据请放在 PR 描述、PR 评论、GitHub 附件、Actions artifact 或外部可访问链接中，不要作为仓库文件合入。
+【必填】若本 PR 修改报告格式、报告渲染效果或 Web UI 界面，请在此处附受影响报告 / 页面截图；涉及前后差异时，优先附前后对比。Issue / PR 过程截图、审查截图、一次性验收截图和临时可视证据请放在 PR 描述、PR 评论、GitHub 附件、Actions artifact 或外部可访问链接中，不要作为仓库文件合入。
 *(EN) If this PR changes report formatting, report rendering, or Web UI, attach screenshots of the affected report/page here; before/after screenshots are preferred when relevant. Issue/PR process screenshots, review screenshots, one-off acceptance screenshots, and temporary visual evidence should be linked from the PR body/comments, GitHub attachments, Actions artifacts, or external accessible evidence; do not commit them as repository files.)*
 
 > 如截图无法获取，请在“原因”中明确写明替代证据（如 Playwright/e2e 产物路径、审查链接）及其可追溯命令，不得留空。涉及 Web 设置/报告渲染变更时，需确保截图或替代证据明确指向变更项。
@@ -91,7 +94,7 @@ python -m pytest -m "not network"
 > - 产物路径：`apps/dsa-web/test-results/**/smoke-settings-page-*.png`
 > - 说明：截图中应可见本次修改的系统设置项（字段、标签、帮助文案）
 
-- 截图链接 / Screenshot links（Web UI/报告改动项必填）：
+- 截图链接 / Screenshot links（Web UI/报告改动项必填，未提供请在下方“不适用原因”给出替代证据）：
 - settings 页建议命名：`smoke-settings-page-zh` / `smoke-settings-page-en`
 - 前后对比 / Before & After（如有）：
 - 不适用原因 / Reason if not applicable（若未附截图，此项务必填写，且包含可复现证据与命令）：
