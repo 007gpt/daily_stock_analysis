@@ -28,6 +28,10 @@ concurrency:
   group: stock-analysis
   cancel-in-progress: false
 
+# 允许 git push 报告到仓库
+permissions:
+  contents: write
+
 jobs:
   analyze:
     runs-on: ubuntu-latest
@@ -512,7 +516,28 @@ jobs:
             reports/
             logs/
           retention-days: 30
-      
+
+      - name: 提交报告到仓库（手机可查看）
+        if: always()
+        run: |
+          # 只有在有报告文件时才提交
+          if [ -d "reports" ] && [ "$(ls -A reports 2>/dev/null)" ]; then
+            # 创建 reports-md 目录（GitHub 直接渲染 Markdown）
+            mkdir -p reports-md
+
+            # 复制报告到新目录
+            cp reports/*.md reports-md/ 2>/dev/null || true
+
+            # 配置 git
+            git config user.name "Stock Analysis Bot"
+            git config user.email "bot@stock-analysis.local"
+
+            # 提交报告
+            git add reports-md/
+            git commit -m "📊 股票分析报告 $(TZ='Asia/Shanghai' date '+%Y-%m-%d')" || true
+            git push origin main
+          fi
+
       - name: 显示运行结果
         if: always()
         run: |
@@ -525,6 +550,11 @@ jobs:
             ls -la reports/
           else
             echo "⚠️ 未生成报告文件"
+          fi
+          echo ""
+          if [ -d "reports-md" ] && [ "$(ls -A reports-md 2>/dev/null)" ]; then
+            echo "📱 手机查看地址:"
+            echo "   https://github.com/007gpt/daily_stock_analysis/tree/main/reports-md"
           fi
           echo ""
           if [ -f "logs/stock_analysis_$(date +%Y%m%d).log" ]; then
