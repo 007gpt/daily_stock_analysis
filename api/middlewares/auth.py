@@ -61,21 +61,11 @@ def _is_loopback_client(request: Request) -> bool:
 
 
 def _get_effective_bound_host(request: Request) -> str:
-    """Return runtime bind host from request scope when available."""
-    server_host: str = ""
-    server = request.scope.get("server")
-    if isinstance(server, tuple) and len(server) > 0:
-        candidate = server[0]
-        if isinstance(candidate, str):
-            server_host = candidate.strip()
-    if server_host:
-        return server_host
-
-    url_host = request.url.hostname
-    if url_host:
-        return str(url_host)
-
-    return current_webui_bound_host()
+    """Return configured bind host when available; unknown values stay empty."""
+    configured = current_webui_bound_host()
+    if configured:
+        return configured.strip()
+    return ""
 
 
 class AuthMiddleware(BaseHTTPMiddleware):

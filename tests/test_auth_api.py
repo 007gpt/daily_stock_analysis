@@ -359,9 +359,36 @@ class AuthApiTestCase(unittest.TestCase):
         middleware = AuthMiddleware(app=MagicMock())
         call_next = AsyncMock(return_value=Response(status_code=200))
 
-        with patch(
-            "api.middlewares.auth.current_webui_bound_host",
-            return_value="127.0.0.1",
+        with patch.dict(
+            os.environ,
+            {"DSA_WEBUI_BOUND_HOST": "", "DSA_ALLOW_INSECURE_PUBLIC_API": ""},
+            clear=False,
+        ), patch("api.middlewares.auth.is_auth_enabled", return_value=False):
+            response = asyncio.run(middleware.dispatch(request, call_next))
+
+        self.assertEqual(response.status_code, 401)
+        self.assertIn(b"admin_auth_required", response.body)
+        call_next.assert_not_awaited()
+
+    def test_missing_request_server_host_with_spoofed_host_header_still_rejected_when_auth_disabled(self) -> None:
+        scope = {
+            "type": "http",
+            "method": "POST",
+            "path": "/api/v1/analysis/analyze",
+            "headers": [(b"host", b"127.0.0.1")],
+            "query_string": b"",
+            "scheme": "http",
+            "client": ("203.0.113.10", 1234),
+            "root_path": "",
+        }
+        request = Request(scope)
+        middleware = AuthMiddleware(app=MagicMock())
+        call_next = AsyncMock(return_value=Response(status_code=200))
+
+        with patch.dict(
+            os.environ,
+            {"DSA_WEBUI_BOUND_HOST": "", "DSA_ALLOW_INSECURE_PUBLIC_API": ""},
+            clear=False,
         ), patch("api.middlewares.auth.is_auth_enabled", return_value=False):
             response = asyncio.run(middleware.dispatch(request, call_next))
 
