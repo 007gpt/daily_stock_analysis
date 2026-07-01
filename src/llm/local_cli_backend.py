@@ -360,8 +360,10 @@ def redact_diagnostic_text(text: str, *, home: Optional[str] = None, limit: int 
     redacted = re.sub(r"(?i)(cookie\s*[:=]\s*)[^\n\r]+", r"\1<redacted>", redacted)
     redacted = re.sub(r"(?i)(session[_-]?secret\s*[:=]\s*)[^\s]+", r"\1<redacted>", redacted)
     redacted = re.sub(
-        r"(?i)\b([A-Z0-9_.-]*(?:api[_-]?key|secret|token|password|passwd|credential)[A-Z0-9_.-]*)(\s*[:=]\s*)(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)",
-        r"\1\2<redacted>",
+        r"(?i)([\"']?)\b"
+        r"([A-Z0-9_.-]*(?:api[_-]?key|secret|token|password|passwd|credential)[A-Z0-9_.-]*)"
+        r"\1(\s*[:=]\s*)(\"[^\"]*\"|'[^']*'|[^\s,;}\]]+)",
+        _redact_sensitive_diagnostic_assignment,
         redacted,
     )
     redacted = re.sub(r"\b(sk-[A-Za-z0-9_-]{12,})\b", "<redacted-api-key>", redacted)
@@ -372,6 +374,16 @@ def redact_diagnostic_text(text: str, *, home: Optional[str] = None, limit: int 
     if len(redacted) > limit:
         return redacted[:limit] + "...<truncated>"
     return redacted
+
+
+def _redact_sensitive_diagnostic_assignment(match: re.Match[str]) -> str:
+    key_quote = match.group(1)
+    key = match.group(2)
+    separator = match.group(3)
+    value = match.group(4)
+    value_quote = value[0] if len(value) >= 2 and value[0] in ("\"", "'") and value[-1] == value[0] else ""
+    redacted_value = f"{value_quote}<redacted>{value_quote}" if value_quote else "<redacted>"
+    return f"{key_quote}{key}{key_quote}{separator}{redacted_value}"
 
 
 def _redact_sensitive_diagnostic_url(match: re.Match[str]) -> str:

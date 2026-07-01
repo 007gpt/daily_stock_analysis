@@ -40,6 +40,10 @@ _rate_limit: dict[str, Tuple[int, float]] = {}
 _rate_limit_lock = None
 
 
+def _is_truthy_env_value(value: Optional[str]) -> bool:
+    return (value or "").strip().lower() in ("true", "1", "yes")
+
+
 def _get_lock():
     """Lazy init threading lock for rate limit dict."""
     global _rate_limit_lock
@@ -67,15 +71,16 @@ def _get_credential_path() -> Path:
 
 
 def _is_auth_enabled_from_env() -> bool:
-    """Read ADMIN_AUTH_ENABLED from .env file."""
+    """Read ADMIN_AUTH_ENABLED from .env file or process environment."""
     _ensure_env_loaded()
     env_file = os.getenv("ENV_FILE")
     env_path = Path(env_file) if env_file else Path(__file__).resolve().parent.parent / ".env"
-    if not env_path.exists():
-        return False
-    values = dotenv_values(env_path)
-    val = (values.get("ADMIN_AUTH_ENABLED") or "").strip().lower()
-    return val in ("true", "1", "yes")
+    if env_path.exists():
+        values = dotenv_values(env_path)
+        if "ADMIN_AUTH_ENABLED" in values:
+            return _is_truthy_env_value(values.get("ADMIN_AUTH_ENABLED"))
+
+    return _is_truthy_env_value(os.getenv("ADMIN_AUTH_ENABLED"))
 
 
 def rotate_session_secret() -> bool:

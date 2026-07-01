@@ -1579,6 +1579,18 @@ def test_diagnostics_redacts_short_sensitive_assignments() -> None:
     assert "normal_value=plain" in redacted
 
 
+def test_diagnostics_redacts_json_style_sensitive_assignments() -> None:
+    preview = local_cli_backend_module._preview_diagnostics(
+        '{"api_key":"abc123"}',
+        '{"FEISHU_APP_SECRET":"xxy123"}',
+    )
+
+    assert '"api_key":"<redacted>"' in preview["stdout_preview"]
+    assert '"FEISHU_APP_SECRET":"<redacted>"' in preview["stderr_preview"]
+    assert "abc123" not in preview["stdout_preview"]
+    assert "xxy123" not in preview["stderr_preview"]
+
+
 def test_effective_local_cli_concurrency_uses_minimum() -> None:
     assert effective_local_cli_concurrency(_config()) == 1
     assert effective_local_cli_concurrency(

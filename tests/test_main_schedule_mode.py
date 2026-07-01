@@ -18,6 +18,7 @@ ensure_litellm_stub()
 
 _ENV_BEFORE_MAIN_IMPORT = dict(os.environ)
 import main
+import src.auth as auth
 from src.config import Config
 from src.webui_security import WEBUI_BOUND_HOST_ENV
 
@@ -194,6 +195,24 @@ class MainScheduleModeTestCase(unittest.TestCase):
              patch("src.auth.is_auth_enabled", return_value=False):
             with self.assertRaisesRegex(RuntimeError, "ADMIN_AUTH_ENABLED=false"):
                 main._enforce_public_webui_auth_guard("0.0.0.0")
+
+    def test_public_webui_bind_allows_env_only_auth_when_env_file_is_missing(self) -> None:
+        missing_env = Path(self.temp_dir.name) / "missing.env"
+
+        with patch.dict(
+            os.environ,
+            {
+                "ENV_FILE": str(missing_env),
+                "ADMIN_AUTH_ENABLED": "true",
+                "DSA_ALLOW_INSECURE_PUBLIC_API": "",
+            },
+            clear=False,
+        ):
+            auth.refresh_auth_state()
+            try:
+                main._enforce_public_webui_auth_guard("0.0.0.0")
+            finally:
+                auth.refresh_auth_state()
 
     def test_public_webui_bind_warns_when_insecure_override_is_enabled(self) -> None:
         with patch.dict(os.environ, {"DSA_ALLOW_INSECURE_PUBLIC_API": "true"}, clear=False), \
